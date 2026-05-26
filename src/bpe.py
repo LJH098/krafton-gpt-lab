@@ -71,7 +71,27 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
-        raise NotImplementedError("BPETokenizer.train을 구현하세요.")
+        bytes_list = list(corpus.encode("utf-8"))
+        while len(self.id_to_token) <= self.vocab_size and len(bytes_list) > 1:
+            freq = {}
+            for i in range(len(bytes_list) - 1):
+                pair = (bytes_list[i], bytes_list[i + 1])
+                freq[pair] = freq.get(pair, 0) + 1
+            
+            most_freq_pair = max(freq, key=lambda pair: freq[pair])
+
+            id = len(self.id_to_token)
+            for i in range(len(bytes_list) - 1):
+                if (bytes_list[i], bytes_list[i + 1]) == most_freq_pair:
+                    bytes_list[i] = id
+                    del bytes_list[i + 1]
+
+
+
+            # merges, id_to_token, token_to_id에 넣기
+            self.merges.append(most_freq_pair)
+            self.id_to_token[id] = most_freq_pair
+            self.token_to_id[most_freq_pair] = id
 
     def save(self, path: str | Path):
         """
