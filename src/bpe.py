@@ -43,7 +43,15 @@ class BPETokenizer:
         1. 특수 토큰 4개를 고정 ID 0~3에 등록합니다.
         2. byte 0~255를 ID 4~259에 bytes([byte_value]) 형태로 등록합니다.
         """
-        raise NotImplementedError("_init_special_tokens를 구현하세요.")
+        for token, token_id in SPECIAL_IDS.items():
+            self.id_to_token[token_id] = token
+            self.token_to_id[token] = token_id
+        
+        for byte_value in range(NUM_BYTES):
+            token_id = BYTE_OFFSET + byte_value
+            token = bytes([byte_value])
+            self.id_to_token[token_id] = token
+            self.token_to_id[token] = token_id
 
     def get_pad_id(self):
         """padding 토큰 ID."""
@@ -71,6 +79,44 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
+        # 안 녕 하 세 요
+        # 13, 14, 15 ,13,  14, 15
+        # 260 , 15, 260 ,15 
+        # 261, 261
+        
+        byte_values = list(corpus.encode("utf-8"))
+        while len(self.id_to_token) < self.vocab_size or len(byte_values) == 1:
+            frequency = {}
+            
+            # 짝짓기
+            for i in range(len(byte_values) -1):
+                pair = (byte_values[i], byte_values[i+1])
+                frequency[pair] = frequency.get(pair, 0) + 1
+            
+            # 가장 많이 나온 것 고르기
+            best_pair = max(frequency, key = lambda pair : frequency[pair])
+            
+            # 새 tokenID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
+            id = len(self.id_to_token)
+            for i in range(len(byte_values) -1):
+               if (byte_values[i], byte_values[i+1]) == best_pair:
+                   byte_values[i] = id
+                   del byte_values[i+1]
+            
+            # merge로 승격
+            self.merges.append(best_pair)
+            self.id_to_token[id] = best_pair
+            self.token_to_id[best_pair] = id
+            
+            # load -> 안녕하세요 나는 이진혁입니다 -> 
+            # load -> 안녕하세요 나는 이윤지입니다 
+            # 300 268 
+            #내가 이번에 train할 때 학습한 내용이 뭔가를 
+            # 안녕
+            # id to token {260 : (14,17)}
+            # token to id {(14,17) : 260}
+            # merge [(14,17)] 
+            
         raise NotImplementedError("BPETokenizer.train을 구현하세요.")
 
     def save(self, path: str | Path):
