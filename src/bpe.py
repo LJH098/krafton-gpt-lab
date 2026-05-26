@@ -43,6 +43,9 @@ class BPETokenizer:
         1. 특수 토큰 4개를 고정 ID 0~3에 등록합니다.
         2. byte 0~255를 ID 4~259에 bytes([byte_value]) 형태로 등록합니다.
         """
+        self.id_to_token = {}
+        self.token_to_id = {}
+
         for token, token_id in SPECIAL_IDS.items():
             self.id_to_token[token_id] = token
             self.token_to_id[token] = token_id
@@ -79,13 +82,12 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
-        # 안 녕 하 세 요
-        # 13, 14, 15 ,13,  14, 15
-        # 260 , 15, 260 ,15 
-        # 261, 261
+        self._init_special_tokens()
+        self.merges = []
         
         byte_values = list(corpus.encode("utf-8"))
-        while len(self.id_to_token) < self.vocab_size or len(byte_values) == 1:
+        byte_values = [byte + BYTE_OFFSET for byte in byte_values]
+        while len(self.id_to_token) < self.vocab_size and len(byte_values) > 1:
             frequency = {}
             
             # 짝짓기
@@ -97,27 +99,25 @@ class BPETokenizer:
             best_pair = max(frequency, key = lambda pair : frequency[pair])
             
             # 새 tokenID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
-            id = len(self.id_to_token)
-            for i in range(len(byte_values) -1):
-               if (byte_values[i], byte_values[i+1]) == best_pair:
-                   byte_values[i] = id
-                   del byte_values[i+1]
+            new_id = len(self.id_to_token)
+            new_byte_values = []
+            i = 0
+
+            while i < len(byte_values):
+                if i < len(byte_values) - 1 and (byte_values[i], byte_values[i + 1]) == best_pair:
+                    new_byte_values.append(new_id)
+                    i += 2
+                else:
+                    new_byte_values.append(byte_values[i])
+                    i += 1
+
+            byte_values = new_byte_values
             
             # merge로 승격
             self.merges.append(best_pair)
-            self.id_to_token[id] = best_pair
-            self.token_to_id[best_pair] = id
+            self.id_to_token[new_id] = best_pair
+            self.token_to_id[best_pair] = new_id
             
-            # load -> 안녕하세요 나는 이진혁입니다 -> 
-            # load -> 안녕하세요 나는 이윤지입니다 
-            # 300 268 
-            #내가 이번에 train할 때 학습한 내용이 뭔가를 
-            # 안녕
-            # id to token {260 : (14,17)}
-            # token to id {(14,17) : 260}
-            # merge [(14,17)] 
-            
-        raise NotImplementedError("BPETokenizer.train을 구현하세요.")
 
     def save(self, path: str | Path):
         """
