@@ -116,7 +116,7 @@ class BPETokenizer:
         - train/load에서 얻은 merge rule을 학습 순서대로 적용합니다.
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
-        raise NotImplementedError("BPETokenizer.encode를 구현하세요.")
+        
 
     def decode(self, ids: list[int], skip_special: bool = True) -> str:
         """
@@ -126,4 +126,16 @@ class BPETokenizer:
         - merge token은 원본 byte token까지 재귀적으로 펼칩니다.
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
-        raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
+        # ids = []
+        IDS = []
+        def divide(id):
+            if id < 260:
+                IDS.append(id)
+            else :
+                p1, p2 = self.id_to_token[id]
+                divide(p1)
+                divide(p2)
+        for id in ids:
+            divide(id)
+        
+        return bytes(IDS).decode("utf-8")
