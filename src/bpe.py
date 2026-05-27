@@ -56,6 +56,23 @@ class BPETokenizer:
             self.id_to_token[token_id] = token
             self.token_to_id[token] = token_id
 
+    def _apply_merge(self, token_ids: list[int], merge_rule: tuple[int, int], merge_id: int) -> list[int]:
+        merged = []
+        i = 0
+        while i < len(token_ids):
+            if i < len(token_ids) - 1 and (token_ids[i], token_ids[i + 1]) == merge_rule:
+                merged.append(merge_id)
+                i += 2
+            else:
+                merged.append(token_ids[i])
+                i += 1
+        return merged
+
+    def _apply_merges(self, token_ids: list[int]) -> list[int]:
+        for merge_rule in self.merges:
+            token_ids = self._apply_merge(token_ids, merge_rule, self.token_to_id[merge_rule])
+        return token_ids
+
     def get_pad_id(self):
         """padding 토큰 ID."""
         return SPECIAL_IDS[PAD_TOKEN]
@@ -87,6 +104,7 @@ class BPETokenizer:
         
         byte_values = list(corpus.encode("utf-8"))
         byte_values = [byte + BYTE_OFFSET for byte in byte_values]
+
         while len(self.id_to_token) < self.vocab_size and len(byte_values) > 1:
             frequency = {}
             
@@ -100,13 +118,7 @@ class BPETokenizer:
             
             # 새 tokenID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
             new_id = len(self.id_to_token)
-            i = 0
-
-            while i < len(byte_values):
-                if i < len(byte_values) - 1 and (byte_values[i], byte_values[i + 1]) == best_pair:
-                    byte_values[i] = new_id
-                    del byte_values[i + 1]
-                i += 1
+            byte_values = self._apply_merge(byte_values, best_pair, new_id)
             
             # merge로 승격
             self.merges.append(best_pair)
@@ -163,19 +175,7 @@ class BPETokenizer:
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
         token_ids = [self.token_to_id[bytes([byte])] for byte in text.encode("utf-8")]
-
-        for merge_rule in self.merges:
-            merge_list = []
-
-            i = 0
-            while i < len(token_ids):
-                if i + 1 < len(token_ids) and (token_ids[i], token_ids[i + 1]) == merge_rule:
-                    merge_list.append(self.token_to_id[merge_rule])
-                    i += 2
-                else:
-                    merge_list.append(token_ids[i])
-                    i += 1
-            token_ids = merge_list
+        token_ids = self._apply_merges(token_ids)
 
         if add_bos_eos:
             token_ids = [SPECIAL_IDS[BOS_TOKEN]] + token_ids + [SPECIAL_IDS[EOS_TOKEN]]
