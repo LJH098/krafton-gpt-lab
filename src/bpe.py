@@ -190,4 +190,21 @@ class BPETokenizer:
         - merge token은 원본 byte token까지 재귀적으로 펼칩니다.
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
-        raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
+        byte_values = []
+
+        def expand(token_id):
+            token = self.id_to_token[token_id]
+            if isinstance(token, str):
+                if not skip_special:
+                    byte_values.extend(token.encode("utf-8"))
+            elif isinstance(token, bytes):
+                byte_values.extend(token)
+            else:
+                left, right = token
+                expand(left)
+                expand(right)
+
+        for token_id in ids:
+            expand(token_id)
+
+        return bytes(byte_values).decode("utf-8")
