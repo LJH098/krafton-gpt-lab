@@ -99,11 +99,12 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
-        self._init_special_tokens()
-        self.merges = []
+        if not self.id_to_token:
+            self._init_special_tokens()
         
         byte_values = list(corpus.encode("utf-8"))
         byte_values = [byte + BYTE_OFFSET for byte in byte_values]
+        byte_values = self._apply_merges(byte_values)
 
         while len(self.id_to_token) < self.vocab_size and len(byte_values) > 1:
             frequency = {}
@@ -154,6 +155,7 @@ class BPETokenizer:
             data = json.load(f)
 
         self._init_special_tokens()
+        self.merges = []
 
         data_list = data["merges"]
 
