@@ -100,18 +100,13 @@ class BPETokenizer:
             
             # 새 tokenID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
             new_id = len(self.id_to_token)
-            new_byte_values = []
             i = 0
 
             while i < len(byte_values):
                 if i < len(byte_values) - 1 and (byte_values[i], byte_values[i + 1]) == best_pair:
-                    new_byte_values.append(new_id)
-                    i += 2
-                else:
-                    new_byte_values.append(byte_values[i])
-                    i += 1
-
-            byte_values = new_byte_values
+                    byte_values[i] = new_id
+                    del byte_values[i + 1]
+                i += 1
             
             # merge로 승격
             self.merges.append(best_pair)
