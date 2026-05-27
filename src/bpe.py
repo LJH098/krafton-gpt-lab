@@ -142,7 +142,6 @@ class BPETokenizer:
             data = json.load(f)
 
         self._init_special_tokens()
-        self.merges = []
 
         data_list = data["merges"]
 
