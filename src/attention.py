@@ -31,7 +31,13 @@ class MultiHeadAttention(nn.Module):
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         # TODO: qkv projection, output projection, dropout을 정의하세요.
-        raise NotImplementedError("MultiHeadAttention.__init__을 구현하세요.")
+        self.W_query = nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.W_key = nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.W_value = nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.out_proj = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(drop_rate)
+        
+        
 
     def forward(
         self,
@@ -47,4 +53,90 @@ class MultiHeadAttention(nn.Module):
             causal_mask: True이면 미래 위치를 볼 수 없게 mask 처리
             return_attention_weights: True이면 attention weight도 함께 반환
         """
-        raise NotImplementedError("MultiHeadAttention.forward를 구현하세요.")
+        b, num_tokens, d_model = x.shape
+        keys = self.W_key(x)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+        
+        keys = keys.view(b, num_tokens, self.n_heads, self.head_dim)
+        queries = queries.view(b, num_tokens, self.n_heads, self.head_dim)
+        values = values.view(b, num_tokens, self.n_heads, self.head_dim)
+        
+        keys = keys.transpose(1,2)
+        queries = queries.transpose(1,2)
+        values = values.transpose(1,2)
+        
+        attn_scores = queries @ keys.transpose(2,3)
+        
+        if causal_mask:
+            mask = torch.triu(torch.ones(num_tokens, num_tokens),
+                       diagonal=1).bool()
+            attn_scores.masked_fill_(mask, -torch.inf)
+            
+        attn_weights = torch.softmax(
+            attn_scores / keys.shape[-1] ** 0.5, dim=-1
+        )
+        attn_weights = self.dropout(attn_weights)
+        
+        context_vec = (attn_weights @ values).transpose(1,2)
+        
+        context_vec = context_vec.contiguous().view(
+            b, num_tokens, d_model
+        )
+        
+        context_vec = self.out_proj(context_vec)
+        
+        if return_attention_weights:
+            return context_vec , attn_weights
+        else:
+            return context_vec
+        
+
+class SelfAttention(nn.Module):
+    def __init__(self, d_model, qkv_bias = False):
+        super().__init__()
+        self.W_query = nn.Linear(d_model, d_model, bias= qkv_bias)
+        self.W_key = nn.Linear(d_model, d_model, bias= qkv_bias)
+        self.W_value = nn.Linear(d_model, d_model, bias= qkv_bias)
+        
+    def forward(self, x):
+        keys = self.W_key(x)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+        attn_scores = queries @ keys.T
+        attn_weights = torch.softmax(
+            attn_scores / keys.shape[-1] ** 0.5 , dim = 1
+        )
+        context_vec = attn_weights @ values
+        return context_vec
+
+class CausalAttention(nn.Module):
+    def __init__(self, d_model, context_length, dropout, qkv_bias = False):
+        super().__init__()
+        self.W_query = nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.W_key = nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.W_value= nn.Linear(d_model, d_model, bias=qkv_bias)
+        self.dropout = nn.Dropout(dropout)
+        self.register_buffer(
+            'mask',
+            torch.triu(torch.ones(context_length, context_length),
+            diagonal = 1)
+        )
+        
+    def forward(self, x):
+        b, num_tokens, d_model = x.shape
+        keys = self.W_key(x)
+        quries = self.W_query(x)
+        values = self.W_value(x)
+        
+        attn_scores = quries @ keys.transpose(1,2)
+        attn_scores.masked_fill_(
+            self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
+        attn_weights = torch.softmax(
+            attn_scores / keys.shape[-1] ** 0.5, dim=-1
+        )
+        
+        attn_weights = self.dropout(attn_weights)
+        
+        context_vec = attn_weights @ values
+        return context_vec
