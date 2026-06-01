@@ -101,7 +101,17 @@ class GPTModel(nn.Module):
         super().__init__()
         self.config = config
         # TODO: embedding, blocks, final layernorm, lm_head를 정의하세요.
-        raise NotImplementedError("GPTModel.__init__을 구현하세요.")
+        self.tok_emb = nn.Embedding(config["vocab_size"], config["emb_dim"])
+        self.pos_emb = nn.Embedding(config["context_length"], config["emb_dim"])
+        self.drop_emb = nn.Dropout(config["drop_rate"])
+        
+        self.trf_blocks = nn.Sequential(
+            *[TransformerBlock(config) for _ in range(config["n_layers"])]
+        )
+        self.final_norm = LayerNorm(config["emb_dim"])
+        self.out_head = nn.Linear(
+            config["emb_dim"], config["vocab_size"], bias=False
+        )
 
     def forward(
         self,
