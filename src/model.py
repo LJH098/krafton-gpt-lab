@@ -125,7 +125,23 @@ class GPTModel(nn.Module):
             targets가 None이면 logits
             targets가 있으면 (loss, logits)
         """
-        raise NotImplementedError("GPTModel.forward를 구현하세요.")
+        
+        batch_size, seq_len = idx.shape
+        tok_embs = self.tok_emb(idx)
+        
+        pos_embs = self.pos_emb(torch.arange(seq_len, device=idx.device))
+        
+        x = tok_embs + pos_embs
+        x = self.drop_emb(x)
+        x = self.trf_blocks(x)
+        x = self.final_norm(x)
+        logits = self.out_head(x)
+        
+        if targets:
+            loss = nn.functional.cross_entropy(
+                logits.flatten(0,1), targets.flatten)
+            return loss, logits
+        return logits
 
 
 def generate_text_simple(
