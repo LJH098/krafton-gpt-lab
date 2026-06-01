@@ -118,7 +118,7 @@ class GPTModel(nn.Module):
         )
         self.final_norm = LayerNorm(emb_dim)
         self.out_head = nn.Linear(
-            config[emb_dim], vocab_size, bias=False
+            emb_dim, vocab_size, bias=False
         )
 
     def forward(
