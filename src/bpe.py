@@ -156,7 +156,7 @@ class BPETokenizer:
 
         self._init_special_tokens()
         self.merges = []
-
+    
         data_list = data["merges"]
 
         new_id = len(self.id_to_token)
@@ -166,7 +166,8 @@ class BPETokenizer:
             self.token_to_id[token] = new_id
             self.merges.append(token)
             new_id += 1
-
+            
+        self.vocab_size = len(self.id_to_token)
     def encode(self, text: str, add_bos_eos: bool = False) -> list[int]:
         """
         TODO: 문자열을 token ID 리스트로 변환합니다.
