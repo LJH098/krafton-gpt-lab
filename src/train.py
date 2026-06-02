@@ -162,7 +162,62 @@ def train_model(
     global_step: int = 0,
 ) -> list[float]:
     """TODO: 사전 학습 루프를 구현하고 epoch별 train loss 리스트를 반환합니다."""
-    raise NotImplementedError("train_model을 구현하세요.")
+    model.to(device)
+    train_losses = []
+    context_size = model.config.get("context_length", 256)
+
+    for epoch in range(start_epoch, num_epochs):
+        model.train()
+        total_loss = 0.0
+        num_batches = 0
+
+        for input_batch, target_batch in train_loader:
+            optimizer.zero_grad()
+            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+            num_batches += 1
+            global_step += 1
+
+            if eval_freq > 0 and global_step % eval_freq == 0:
+                model.eval()
+                with torch.no_grad():
+                    train_loss = calc_loss_loader(train_loader, model, device, eval_iter)
+                    val_loss = (
+                        calc_loss_loader(val_loader, model, device, eval_iter)
+                        if val_loader is not None
+                        else float("nan")
+                    )
+                print(
+                    f"Ep {epoch + 1} (Step {global_step}): "
+                    f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
+                )
+                model.train()
+
+        avg_train_loss = total_loss / num_batches if num_batches > 0 else float("nan")
+        train_losses.append(avg_train_loss)
+
+        generate_and_print_sample(
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            start_context=start_context,
+            context_size=context_size,
+            top_k=min(40, model.config.get("vocab_size", 40)),
+        )
+
+        if ckpt_freq is not None and ckpt_freq > 0 and (epoch + 1) % ckpt_freq == 0:
+            save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch + 1,
+                global_step=global_step,
+                path=f"checkpoint_epoch_{epoch + 1}.pt",
+            )
+
+    return train_losses
 
 
 def plot_losses(train_losses: list[float], val_losses: list[float] | None = None) -> None:
