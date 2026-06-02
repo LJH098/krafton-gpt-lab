@@ -106,13 +106,13 @@ def generate(
         if temperature > 0.0:
             logits = logits / temperature
             probs = torch.softmax(logits, dim=-1)
-            id_next = torch.multinomial(probs,num_samples=1)
+            idx_next = torch.multinomial(probs,num_samples=1)
         else:
             idx_next = torch.argmax(logits, dim=-1, keepdim=True)
         
-        if idx_next == eos_id:
+        if eos_id is not None and idx_next.item() == eos_id:
             break
-        idx = torch.cat((idx, id_next), dim=1)
+        idx = torch.cat((idx, idx_next), dim=1)
     return idx
     
 
