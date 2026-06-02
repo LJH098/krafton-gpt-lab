@@ -209,4 +209,4 @@ class BPETokenizer:
         for token_id in ids:
             expand(token_id)
 
-        return bytes(byte_values).decode("utf-8")
+        return bytes(byte_values).decode("utf-8", errors="replace")
