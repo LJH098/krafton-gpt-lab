@@ -30,8 +30,13 @@ class MultiHeadAttention(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
+        self.W_query = nn.Linear(self.d_model, self.d_model, bias=qkv_bias)
+        self.W_key = nn.Linear(self.d_model, self.d_model, bias=qkv_bias)
+        self.W_value = nn.Linear(self.d_model, self.d_model, bias=qkv_bias)
+        self.output_projection = nn.Linear(self.d_model, self.d_model)
+        self.drop_rate = nn.Dropout(drop_rate)
         # TODO: qkv projection, output projection, dropout을 정의하세요.
-        raise NotImplementedError("MultiHeadAttention.__init__을 구현하세요.")
+        #raise NotImplementedError("MultiHeadAttention.__init__을 구현하세요.")
 
     def forward(
         self,
@@ -47,4 +52,38 @@ class MultiHeadAttention(nn.Module):
             causal_mask: True이면 미래 위치를 볼 수 없게 mask 처리
             return_attention_weights: True이면 attention weight도 함께 반환
         """
+        batch_size, seq_len, d_model = x.shape
+        keys = self.W_key(x)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+
+        keys = keys.view(batch_size, seq_len, self.n_heads, self.head_dim)
+        values = values.view(batch_size, seq_len, self.n_heads, self.head_dim)
+        queries = queries.view(batch_size, seq_len, self.n_heads, self.head_dim)
+
+        keys = keys.transpose(1,2)
+        queries = queries.transpose(1,2)
+        values = values.transpose(1,2)
+
+        attn_scores = queries@keys.transpose(2,3)
+
+        T = x.size(1)
+        if causal_mask:
+            mask_bool = torch.triu(torch.ones(T, T, device=x.device), diagonal=1).bool()
+            attn_scores.masked_fill_(mask_bool, -torch.inf)
+
+        attn_weights = torch.softmax(
+            attn_scores / keys.shape[-1]**0.5, dim=-1)
+        attn_weights = self.drop_rate(attn_weights)
+
+        context_vec = (attn_weights @ values).transpose(1,2)
+
+        context_vec = context_vec.contiguous().view(
+            batch_size, seq_len, d_model
+        )
+        
+        context_vec = self.output_projection(context_vec)
+        if return_attention_weights:
+            return context_vec, attn_weights
+        return context_vec
         raise NotImplementedError("MultiHeadAttention.forward를 구현하세요.")

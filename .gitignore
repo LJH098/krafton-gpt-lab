@@ -3,6 +3,7 @@ data/ratings_train.txt
 data/ratings_test.txt
 data/nsmc_lm_*.txt
 data/nsmc_sentiment_*.jsonl
+data/nsmc_bpe_vocab_*.json
 data/vocab_*.json
 data/*.jsonl
 

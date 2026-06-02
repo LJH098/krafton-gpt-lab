@@ -27,7 +27,10 @@ class InputEmbedding(nn.Module):
         self.emb_dim = emb_dim
         self.context_length = context_length
         # TODO: token_embedding, position_embedding, dropout을 정의하세요.
-        raise NotImplementedError("InputEmbedding.__init__을 구현하세요.")
+        self.token_embedding_layer = torch.nn.Embedding(vocab_size, emb_dim)
+        self.position_embedding_layer = torch.nn.Embedding(context_length, emb_dim)
+        self.dropout = torch.nn.Dropout(drop_rate)
+        #raise NotImplementedError("InputEmbedding.__init__을 구현하세요.")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -39,4 +42,10 @@ class InputEmbedding(nn.Module):
         Returns:
             (batch_size, seq_len, emb_dim)
         """
+        token_embeddings = self.token_embedding_layer(x)
+        position_embeddings = self.position_embedding_layer(torch.arange(x.shape[1], device=x.device))
+        input_embeddings = token_embeddings + position_embeddings
+        
+        
+        return self.dropout(input_embeddings)
         raise NotImplementedError("InputEmbedding.forward를 구현하세요.")
