@@ -69,8 +69,10 @@ class MultiHeadAttention(nn.Module):
         attn_scores = queries @ keys.transpose(2,3)
         
         if causal_mask:
-            mask = torch.triu(torch.ones(num_tokens, num_tokens),
-                       diagonal=1).bool()
+            mask = torch.triu(
+                torch.ones(num_tokens, num_tokens, device=attn_scores.device),
+                diagonal=1,
+            ).bool()
             attn_scores.masked_fill_(mask, -torch.inf)
             
         attn_weights = torch.softmax(
