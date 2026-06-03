@@ -87,6 +87,34 @@ class TestCalcLossLoader:
 
 
 # =============================================================================
+# apply_lr_warmup
+# =============================================================================
+
+
+class TestLearningRateWarmup:
+    """학습률 warmup 동작 확인."""
+
+    def test_apply_lr_warmup_linearly_increases_to_base_lr(self):
+        """warmup_steps 동안 lr이 선형 증가하고 이후 base lr을 유지하는지 확인한다."""
+        from train import apply_lr_warmup
+
+        param = torch.nn.Parameter(torch.tensor(1.0))
+        optimizer = torch.optim.AdamW([param], lr=1e-3)
+
+        apply_lr_warmup(optimizer, warmup_steps=4, step=1)
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(2.5e-4)
+
+        apply_lr_warmup(optimizer, warmup_steps=4, step=2)
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(5e-4)
+
+        apply_lr_warmup(optimizer, warmup_steps=4, step=4)
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(1e-3)
+
+        apply_lr_warmup(optimizer, warmup_steps=4, step=5)
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(1e-3)
+
+
+# =============================================================================
 # save_checkpoint / load_checkpoint
 # =============================================================================
 

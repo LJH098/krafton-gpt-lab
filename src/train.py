@@ -146,6 +146,21 @@ def generate_and_print_sample(
         model.train()
 
 
+def apply_lr_warmup(
+    optimizer: torch.optim.Optimizer,
+    warmup_steps: int,
+    step: int,
+) -> None:
+    """Linear learning rate warmup for one-based training steps."""
+    if warmup_steps <= 0:
+        return
+
+    warmup_ratio = min(step, warmup_steps) / warmup_steps
+    for group in optimizer.param_groups:
+        base_lr = group.setdefault("initial_lr", group["lr"])
+        group["lr"] = base_lr * warmup_ratio
+
+
 def train_model(
     model: GPTModel,
     train_loader,
@@ -160,6 +175,7 @@ def train_model(
     ckpt_freq: int | None = None,
     start_epoch: int = 0,
     global_step: int = 0,
+    warmup_steps: int = 0,
 ) -> list[float]:
     """TODO: 사전 학습 루프를 구현하고 epoch별 train loss 리스트를 반환합니다."""
     model.to(device)
@@ -172,6 +188,7 @@ def train_model(
         num_batches = 0
 
         for input_batch, target_batch in train_loader:
+            apply_lr_warmup(optimizer, warmup_steps, global_step + 1)
             optimizer.zero_grad()
             loss = calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward()
