@@ -13,6 +13,65 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+
+class DummyTokenizer:
+    """BPE 학습 없이 corpus encoding 정책만 확인하는 테스트용 tokenizer."""
+
+    def encode(self, text, add_bos_eos=False):
+        ids = [(ord(ch) % 50) + 4 for ch in text]
+        if add_bos_eos:
+            return [2] + ids + [3]
+        return ids
+
+
+# =============================================================================
+# LM corpus encoding
+# =============================================================================
+
+
+class TestEncodeLMCorpus:
+    """encode_lm_corpus가 BOS/EOS boundary 정책을 적용하는지 확인."""
+
+    def test_default_preserves_full_text_encoding(self):
+        """기본값은 기존처럼 corpus 전체를 한 번에 encode한다."""
+        from dataset import encode_lm_corpus
+
+        tokenizer = DummyTokenizer()
+        text = "첫줄\n둘째줄"
+
+        assert encode_lm_corpus(text, tokenizer) == tokenizer.encode(text)
+
+    def test_line_mode_adds_bos_eos_to_each_non_empty_line(self):
+        """line mode에서는 각 non-empty line 앞뒤에 bos/eos를 붙인다."""
+        from dataset import encode_lm_corpus
+
+        tokenizer = DummyTokenizer()
+        text = "ab\ncd"
+        expected = (
+            tokenizer.encode("ab", add_bos_eos=True)
+            + tokenizer.encode("cd", add_bos_eos=True)
+        )
+
+        assert encode_lm_corpus(
+            text, tokenizer, add_bos_eos_per_line=True
+        ) == expected
+
+    def test_line_mode_skips_empty_lines_by_default(self):
+        """빈 줄은 기본적으로 학습 token으로 만들지 않는다."""
+        from dataset import encode_lm_corpus
+
+        tokenizer = DummyTokenizer()
+        text = "ab\n\ncd\n"
+        expected = (
+            tokenizer.encode("ab", add_bos_eos=True)
+            + tokenizer.encode("cd", add_bos_eos=True)
+        )
+
+        assert encode_lm_corpus(
+            text, tokenizer, add_bos_eos_per_line=True
+        ) == expected
+
+
 # =============================================================================
 # GPTDataset
 # =============================================================================

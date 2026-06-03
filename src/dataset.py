@@ -5,6 +5,24 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 
+def encode_lm_corpus(
+    text: str,
+    tokenizer,
+    add_bos_eos_per_line: bool = False,
+    skip_empty_lines: bool = True,
+) -> list[int]:
+    """LM corpus를 token ID 리스트로 변환합니다."""
+    if not add_bos_eos_per_line:
+        return tokenizer.encode(text)
+
+    token_ids = []
+    for line in text.splitlines():
+        if skip_empty_lines and not line:
+            continue
+        token_ids.extend(tokenizer.encode(line, add_bos_eos=True))
+    return token_ids
+
+
 class GPTDataset(Dataset):
     """
     token ID 리스트를 다음 토큰 예측용 input/target 쌍으로 자릅니다.

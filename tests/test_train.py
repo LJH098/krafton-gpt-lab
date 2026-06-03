@@ -87,6 +87,40 @@ class TestCalcLossLoader:
 
 
 # =============================================================================
+# learning rate warmup
+# =============================================================================
+
+
+class TestLearningRateWarmup:
+    """linear warmup learning rate 계산과 optimizer 적용을 확인."""
+
+    def test_get_lr_with_warmup_linear_schedule(self):
+        """warmup 동안 base_lr까지 선형으로 증가하고 이후 base_lr을 유지한다."""
+        from train import get_lr_with_warmup
+
+        base_lr = 1e-3
+        assert get_lr_with_warmup(base_lr, global_step=0, warmup_steps=4) == pytest.approx(2.5e-4)
+        assert get_lr_with_warmup(base_lr, global_step=3, warmup_steps=4) == pytest.approx(base_lr)
+        assert get_lr_with_warmup(base_lr, global_step=10, warmup_steps=4) == pytest.approx(base_lr)
+        assert get_lr_with_warmup(base_lr, global_step=0, warmup_steps=0) == pytest.approx(base_lr)
+
+    def test_apply_learning_rate_warmup_updates_optimizer(self):
+        """optimizer param group의 lr이 warmup step에 맞게 갱신된다."""
+        from train import apply_learning_rate_warmup
+
+        param = torch.nn.Parameter(torch.tensor(1.0))
+        optimizer = torch.optim.AdamW([param], lr=1e-3)
+
+        current_lrs = apply_learning_rate_warmup(
+            optimizer, global_step=0, warmup_steps=5
+        )
+
+        assert current_lrs == pytest.approx([2e-4])
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(2e-4)
+        assert optimizer.param_groups[0]["initial_lr"] == pytest.approx(1e-3)
+
+
+# =============================================================================
 # save_checkpoint / load_checkpoint
 # =============================================================================
 
