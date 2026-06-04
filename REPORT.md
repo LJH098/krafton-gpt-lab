@@ -138,6 +138,7 @@
 | 오류 예시 | 오분류 분석은 별도 수집 전. 짧은 반어/비꼼 리뷰, 긍·부정 단어가 함께 등장하는 리뷰, 문맥이 긴 리뷰를 우선 확인 예정 |
 
 ---
+![fine-tuning-best](assets/gpt-training-analysis/fine-tuning-best.png)
 
 ## 8. 실험 환경
 
